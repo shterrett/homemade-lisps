@@ -109,10 +109,6 @@ parseComplex = do Float x <- try parseDecimal
                   return $ Complex (x :+ y)
 
 parseNumber :: Parser LispVal
--- parseNumber = many1 digit >>= return . Number . read
--- parseNumber = do
---     num <- many1 digit
---     return (Number . read $ num)
 parseNumber = prefixedNumber
               <|> try parseComplex
               <|> try parseRatio
