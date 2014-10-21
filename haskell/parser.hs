@@ -1,47 +1,11 @@
-module Main where
-import Text.ParserCombinators.Parsec hiding (spaces)
+module Parser where
 import Control.Monad
-import Data.Vector (Vector, fromList, toList)
 import Data.Complex
 import Data.Ratio
-import System.Environment
+import Data.Vector (Vector, fromList, toList)
+import LispValue
 import Numeric (readOct, readHex, readFloat)
-
-data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal] LispVal
-             | Number Integer
-             | Float Float
-             | Ratio Rational
-             | Complex (Complex Float)
-             | Bool Bool
-             | String String
-             | Vector (Vector LispVal)
-
-unwordsLisp :: [LispVal] -> String
-unwordsLisp = unwords . map showVal
-
-showVal :: LispVal -> String
-showVal (String contents) = "\"" ++ contents ++ "\""
-showVal (Atom name) = name
-showVal (Number contents) = show contents
-showVal (Float contents) = show contents
-showVal (Ratio contents) = show contents
-showVal (Complex contents) = show contents
-showVal (Bool True) = "#t"
-showVal (Bool False) = "#f"
-showVal (List contents) = "(" ++ unwordsLisp contents ++ ")"
-showVal (DottedList head tail) = "(" ++ unwordsLisp head ++ " . " ++ showVal tail  ++ ")"
-showVal (Vector contents) = "#(" ++ unwordsLisp (toList contents) ++ ")"
-
-
-instance Show LispVal where
-    show = showVal
-
-main :: IO ()
-main = do
-    args <- getArgs
-    putStrLn (readExpr (head args))
+import Text.ParserCombinators.Parsec hiding (spaces)
 
 spaces :: Parser ()
 spaces = skipMany1 space
@@ -141,8 +105,18 @@ parseAtom = do
     let atom = first:rest
     return $ Atom atom
 
+parseCharacter :: Parser LispVal
+parseCharacter = do
+    try $ string "#\\"
+    value <- try (string "newline" <|> string "space") <|> do { x <- anyChar; notFollowedBy alphaNum ; return [x] }
+    return $ Character $ case value of
+                           "space" -> ' '
+                           "newline" -> '\n'
+                           otherwise -> head value
+
 parseBoolean :: Parser LispVal
 parseBoolean = do
+    _ <- char '#'
     c <- oneOf "tf"
     return $ case c of
                't' -> Bool True
@@ -182,7 +156,9 @@ parseVector = do
 
 parseExpr :: Parser LispVal
 parseExpr =  parseString
-            <|> parseNumber
+            <|> try parseNumber
+            <|> try parseBoolean
+            <|> try parseCharacter
             <|> parseAtom
             <|> parseQuote
             <|> parseQuasiQuote
@@ -199,8 +175,3 @@ parseExpr =  parseString
                  x <- try parseList <|> parseDottedList
                  _ <-char ')'
                  return x
-
-readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> "No match " ++ show err
-                   Right val -> "Found value " ++ show val
