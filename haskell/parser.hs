@@ -131,10 +131,31 @@ parseBoolean = do
                't' -> Bool True
                'f' -> Bool False
 
+parseList :: Parser LispVal
+parseList = liftM List $ sepBy parseExpr spaces
+
+parseDottedList :: Parser LispVal
+parseDottedList = do
+    head <- endBy parseExpr spaces
+    tail <- char '.' >> spaces >> parseExpr
+    return $ DottedList head tail
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+    _ <- char '\''
+    x <- parseExpr
+    return $ List [Atom "quote", x]
+
 parseExpr :: Parser LispVal
 parseExpr =  parseString
             <|> parseNumber
             <|> parseAtom
+            <|> parseQuoted
+            <|> do
+                 _ <-  char '('
+                 x <- try parseList <|> parseDottedList
+                 _ <-char ')'
+                 return x
 
 readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
