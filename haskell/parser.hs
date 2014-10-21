@@ -1,7 +1,7 @@
 module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
-import Data.Array
+import Data.Vector (Vector, fromList, toList)
 import Data.Complex
 import Data.Ratio
 import System.Environment
@@ -16,8 +16,27 @@ data LispVal = Atom String
              | Complex (Complex Float)
              | Bool Bool
              | String String
-             | Vector (Array Int LispVal)
-             deriving Show
+             | Vector (Vector LispVal)
+
+unwordsLisp :: [LispVal] -> String
+unwordsLisp = unwords . map showVal
+
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (Number contents) = show contents
+showVal (Float contents) = show contents
+showVal (Ratio contents) = show contents
+showVal (Complex contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (List contents) = "(" ++ unwordsLisp contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsLisp head ++ " . " ++ showVal tail  ++ ")"
+showVal (Vector contents) = "#(" ++ unwordsLisp (toList contents) ++ ")"
+
+
+instance Show LispVal where
+    show = showVal
 
 main :: IO ()
 main = do
@@ -159,7 +178,7 @@ parseUnQuote = do
 parseVector :: Parser LispVal
 parseVector = do
     arrayValues <- sepBy parseExpr spaces
-    return $ Vector (listArray (0, length arrayValues - 1) arrayValues)
+    return $ Vector (fromList arrayValues)
 
 parseExpr :: Parser LispVal
 parseExpr =  parseString
