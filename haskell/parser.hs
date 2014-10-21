@@ -1,6 +1,7 @@
 module Main where
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
+import Data.Array
 import Data.Complex
 import Data.Ratio
 import System.Environment
@@ -15,6 +16,7 @@ data LispVal = Atom String
              | Complex (Complex Float)
              | Bool Bool
              | String String
+             | Vector (Array Int LispVal)
              deriving Show
 
 main :: IO ()
@@ -26,7 +28,7 @@ spaces :: Parser ()
 spaces = skipMany1 space
 
 symbol :: Parser Char
-symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
+symbol = oneOf "!$%&|*+-/:<=>?@^_~"
 
 parseEscape :: Parser Char
 parseEscape = do
@@ -140,17 +142,43 @@ parseDottedList = do
     tail <- char '.' >> spaces >> parseExpr
     return $ DottedList head tail
 
-parseQuoted :: Parser LispVal
-parseQuoted = do
+parseQuote :: Parser LispVal
+parseQuote = do
     _ <- char '\''
     x <- parseExpr
     return $ List [Atom "quote", x]
+
+parseQuasiQuote :: Parser LispVal
+parseQuasiQuote = do
+    _ <- char '`'
+    x <- parseExpr
+    return $ List [Atom "quasiquote", x]
+
+parseUnQuote :: Parser LispVal
+parseUnQuote = do
+    _ <- char ','
+    x <- parseExpr
+    return $ List [Atom "unquote", x]
+
+parseVector :: Parser LispVal
+parseVector = do
+    arrayValues <- sepBy parseExpr spaces
+    return $ Vector (listArray (0, length arrayValues - 1) arrayValues)
 
 parseExpr :: Parser LispVal
 parseExpr =  parseString
             <|> parseNumber
             <|> parseAtom
-            <|> parseQuoted
+            <|> parseQuote
+            <|> parseQuasiQuote
+            <|> parseUnQuote
+            <|> try
+                (do
+                 _ <- string "#("
+                 x <- parseVector
+                 _ <- char ')'
+                 return x)
+
             <|> do
                  _ <-  char '('
                  x <- try parseList <|> parseDottedList
