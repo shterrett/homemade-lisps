@@ -23,16 +23,59 @@ primitives = [("+", numericBinop (+)),
               ("/", numericBinop div),
               ("mod", numericBinop mod),
               ("quotient", numericBinop quot),
-              ("remainder", numericBinop rem)]
+              ("remainder", numericBinop rem),
+              ("symbol?", isSymbol),
+              ("string?", isString),
+              ("boolean?", isBoolean),
+              ("list?", isList),
+              ("number?", isNumber),
+              ("character?", isCharacter),
+              ("vector?", isVector),
+              ("symbol->string", symbolToString),
+              ("string->symbol", symbolToString)]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
 numericBinop op params = Number $ foldl1 op $ map unpackNum params
 
 unpackNum :: LispVal -> Integer
 unpackNum (Number n) = n
-unpackNum (String n) = let parsed = reads n :: [(Integer, String)] in
-                        if null parsed
-                          then 0
-                          else fst $ head parsed
-unpackNum (List [n]) = unpackNum n
 unpackNum _ = 0
+
+isSymbol :: [LispVal] -> LispVal
+isSymbol [Atom _] = Bool True
+isSymbol _  = Bool False
+
+isString :: [LispVal] -> LispVal
+isString [String _] = Bool True
+isString _ = Bool False
+
+isBoolean :: [LispVal] -> LispVal
+isBoolean [Bool _] = Bool True
+isBoolean _ = Bool False
+
+isList :: [LispVal] -> LispVal
+isList [List _] = Bool True
+isList _ = Bool False
+
+isNumber :: [LispVal] -> LispVal
+isNumber [Number _] = Bool True
+isNumber [Float _] = Bool True
+isNumber [Ratio _] = Bool True
+isNumber [Complex _] = Bool True
+isNumber _ = Bool False
+
+isCharacter :: [LispVal] -> LispVal
+isCharacter [Character _] = Bool True
+isCharacter _ = Bool False
+
+isVector :: [LispVal] -> LispVal
+isVector [Vector _] = Bool True
+isVector _ = Bool False
+
+symbolToString :: [LispVal] -> LispVal
+symbolToString [Atom atom] = String string
+symbolToString _ = String ""
+
+stringToSymbol :: [LispVal] -> LispVal
+stringToSymbol [String str] = Atom str
+stringToSymbol _ = Atom ""
