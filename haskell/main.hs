@@ -1,4 +1,7 @@
 module Main where
+import Control.Monad
+import Control.Monad.Error
+import Error
 import Evaluator (eval)
 import LispValue
 import Parser
@@ -6,9 +9,12 @@ import System.Environment
 import Text.ParserCombinators.Parsec (parse)
 
 main :: IO ()
-main = getArgs >>= print . eval . readExpr . head
+main = do
+    args <- getArgs
+    evaled <- return $ liftM show $ readExpr (head args) >>= eval
+    putStrLn $ extractValue $ trapError evaled
 
-readExpr :: String -> LispVal
+readExpr :: String -> ThrowsError LispVal
 readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> String $ "No match " ++ show err
-                   Right val -> val
+                   Left err -> throwError $ Parser err
+                   Right val -> return val

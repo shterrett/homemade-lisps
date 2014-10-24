@@ -15,8 +15,8 @@ data LispVal = Atom String
              | Character Char
              | Vector (Vector LispVal)
 
-unwordsLisp :: [LispVal] -> String
-unwordsLisp = unwords . map showVal
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
 
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
@@ -27,9 +27,9 @@ showVal (Ratio contents) = show contents
 showVal (Complex contents) = show contents
 showVal (Bool True) = "#t"
 showVal (Bool False) = "#f"
-showVal (List contents) = "(" ++ unwordsLisp contents ++ ")"
-showVal (DottedList head tail) = "(" ++ unwordsLisp head ++ " . " ++ showVal tail  ++ ")"
-showVal (Vector contents) = "#(" ++ unwordsLisp (toList contents) ++ ")"
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail  ++ ")"
+showVal (Vector contents) = "#(" ++ unwordsList (toList contents) ++ ")"
 
 
 instance Show LispVal where

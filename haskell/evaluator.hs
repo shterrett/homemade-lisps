@@ -1,22 +1,28 @@
 module Evaluator where
+import Control.Monad
+import Control.Monad.Error
+import Error
 import LispValue
 import Numeric
 
-eval :: LispVal -> LispVal
-eval val@(String _) = val
-eval val@(Character _) = val
-eval val@(Bool _) = val
-eval val@(Number _) = val
-eval val@(Float _) = val
-eval val@(Ratio _) = val
-eval val@(Complex _) = val
-eval (List [Atom "quote", val]) = val
-eval (List (Atom func : args)) = apply func $ map eval args
+eval :: LispVal -> ThrowsError LispVal
+eval val@(String _) = return val
+eval val@(Character _) = return val
+eval val@(Bool _) = return val
+eval val@(Number _) = return val
+eval val@(Float _) = return val
+eval val@(Ratio _) = return val
+eval val@(Complex _) = return val
+eval (List [Atom "quote", val]) = return val
+eval (List (Atom func : args)) = mapM eval args >>= apply func
+eval badForm = throwError $ BadSpecialForm "Unrecognized Special Form" [badForm]
 
-apply :: String -> [LispVal] -> LispVal
-apply func args = maybe (Bool False) ($ args) $ lookup func primitives
+apply :: String -> [LispVal] -> ThrowsError LispVal
+apply func args = maybe (throwError $ NotFunction "Unrecognized primitive function args" func)
+                  ($ args)
+                  (lookup func primitives)
 
-primitives :: [(String, [LispVal] -> LispVal)]
+primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericBinop (+)),
               ("-", numericBinop (-)),
               ("*", numericBinop (*)),
@@ -34,48 +40,50 @@ primitives = [("+", numericBinop (+)),
               ("symbol->string", symbolToString),
               ("string->symbol", symbolToString)]
 
-numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
-numericBinop op params = Number $ foldl1 op $ map unpackNum params
+numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
+numericBinop _ [] = throwError $ NumArgs 2 []
+numericBinop _ singleVal@[_] = throwError $ NumArgs 2 singleVal
+numericBinop op params = mapM unpackNum params >>= return . Number . foldl1 op
 
-unpackNum :: LispVal -> Integer
-unpackNum (Number n) = n
-unpackNum _ = 0
+unpackNum :: LispVal -> ThrowsError Integer
+unpackNum (Number n) = return n
+unpackNum notNum = throwError $ TypeMismatch "number" notNum
 
-isSymbol :: [LispVal] -> LispVal
-isSymbol [Atom _] = Bool True
-isSymbol _  = Bool False
+isSymbol :: [LispVal] -> ThrowsError LispVal
+isSymbol [Atom _] = return $ Bool True
+isSymbol _  = return $ Bool False
 
-isString :: [LispVal] -> LispVal
-isString [String _] = Bool True
-isString _ = Bool False
+isString :: [LispVal] -> ThrowsError LispVal
+isString [String _] = return $ Bool True
+isString _ = return $ Bool False
 
-isBoolean :: [LispVal] -> LispVal
-isBoolean [Bool _] = Bool True
-isBoolean _ = Bool False
+isBoolean :: [LispVal] -> ThrowsError LispVal
+isBoolean [Bool _] = return $ Bool True
+isBoolean _ = return $ Bool False
 
-isList :: [LispVal] -> LispVal
-isList [List _] = Bool True
-isList _ = Bool False
+isList :: [LispVal] -> ThrowsError LispVal
+isList [List _] = return $ Bool True
+isList _ = return $ Bool False
 
-isNumber :: [LispVal] -> LispVal
-isNumber [Number _] = Bool True
-isNumber [Float _] = Bool True
-isNumber [Ratio _] = Bool True
-isNumber [Complex _] = Bool True
-isNumber _ = Bool False
+isNumber :: [LispVal] -> ThrowsError LispVal
+isNumber [Number _] = return $ Bool True
+isNumber [Float _] = return $ Bool True
+isNumber [Ratio _] = return $ Bool True
+isNumber [Complex _] = return $ Bool True
+isNumber _ = return $ Bool False
 
-isCharacter :: [LispVal] -> LispVal
-isCharacter [Character _] = Bool True
-isCharacter _ = Bool False
+isCharacter :: [LispVal] -> ThrowsError LispVal
+isCharacter [Character _] = return $ Bool True
+isCharacter _ = return $ Bool False
 
-isVector :: [LispVal] -> LispVal
-isVector [Vector _] = Bool True
-isVector _ = Bool False
+isVector :: [LispVal] -> ThrowsError LispVal
+isVector [Vector _] = return $ Bool True
+isVector _ = return $ Bool False
 
-symbolToString :: [LispVal] -> LispVal
-symbolToString [Atom atom] = String string
-symbolToString _ = String ""
+symbolToString :: [LispVal] -> ThrowsError LispVal
+symbolToString [Atom atom] = return $ String atom
+symbolToString _ = return $ String ""
 
-stringToSymbol :: [LispVal] -> LispVal
-stringToSymbol [String str] = Atom str
-stringToSymbol _ = Atom ""
+stringToSymbol :: [LispVal] -> ThrowsError LispVal
+stringToSymbol [String str] = return $ Atom str
+stringToSymbol _ = return $ Atom ""
