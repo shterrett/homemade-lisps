@@ -1,8 +1,12 @@
+{-# LANGUAGE ExistentialQuantification #-}
+
 module Evaluator where
+import Boolean
 import Control.Monad
 import Control.Monad.Error
 import Error
 import LispValue
+import ListPrimitives
 import Numeric
 
 eval :: LispVal -> ThrowsError LispVal
@@ -56,12 +60,18 @@ primitives = [("+", numericBinop (+)),
               ("string<?", strBoolBinop (<)),
               ("string>?", strBoolBinop (>)),
               ("string<=?", strBoolBinop (<=)),
-              ("string>=?", strBoolBinop (>=))]
+              ("string>=?", strBoolBinop (>=)),
+              ("car", car),
+              ("cdr", cdr),
+              ("cons", cons),
+              ("eq?", eqv),
+              ("eqv?", eqv),
+              ("equal?", equal)]
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericBinop _ [] = throwError $ NumArgs 2 []
 numericBinop _ singleVal@[_] = throwError $ NumArgs 2 singleVal
-numericBinop op params = mapM unpackNum params >>= return . Number . foldl1 op
+numericBinop op params = liftM (Number . foldl1 op) (mapM unpackNum params)
 
 boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolBinop unpacker op args = if length args /= 2
@@ -88,37 +98,6 @@ unpackBool :: LispVal -> ThrowsError Bool
 unpackBool (Bool b) = return b
 unpackBool notBool = throwError $ TypeMismatch "not boolean" notBool
 
-isSymbol :: [LispVal] -> ThrowsError LispVal
-isSymbol [Atom _] = return $ Bool True
-isSymbol _  = return $ Bool False
-
-isString :: [LispVal] -> ThrowsError LispVal
-isString [String _] = return $ Bool True
-isString _ = return $ Bool False
-
-isBoolean :: [LispVal] -> ThrowsError LispVal
-isBoolean [Bool _] = return $ Bool True
-isBoolean _ = return $ Bool False
-
-isList :: [LispVal] -> ThrowsError LispVal
-isList [List _] = return $ Bool True
-isList _ = return $ Bool False
-
-isNumber :: [LispVal] -> ThrowsError LispVal
-isNumber [Number _] = return $ Bool True
-isNumber [Float _] = return $ Bool True
-isNumber [Ratio _] = return $ Bool True
-isNumber [Complex _] = return $ Bool True
-isNumber _ = return $ Bool False
-
-isCharacter :: [LispVal] -> ThrowsError LispVal
-isCharacter [Character _] = return $ Bool True
-isCharacter _ = return $ Bool False
-
-isVector :: [LispVal] -> ThrowsError LispVal
-isVector [Vector _] = return $ Bool True
-isVector _ = return $ Bool False
-
 symbolToString :: [LispVal] -> ThrowsError LispVal
 symbolToString [Atom atom] = return $ String atom
 symbolToString _ = return $ String ""
@@ -126,3 +105,20 @@ symbolToString _ = return $ String ""
 stringToSymbol :: [LispVal] -> ThrowsError LispVal
 stringToSymbol [String str] = return $ Atom str
 stringToSymbol _ = return $ Atom ""
+
+data Unpacker = forall a. Eq a => AnyUnpacker(LispVal -> ThrowsError a)
+
+unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
+unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
+          do unpacked1 <- unpacker arg1
+             unpacked2 <- unpacker arg2
+             return $ unpacked1 == unpacked2
+        `catchError` const (return False)
+
+equal :: [LispVal] -> ThrowsError LispVal
+equal [arg1, arg2] = do
+    primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2)
+                                       [AnyUnpacker unpackNum, AnyUnpacker unpackString, AnyUnpacker unpackBool]
+    eqvEquals <- eqv [arg1, arg2]
+    return $ Bool (primitiveEquals || let (Bool x) = eqvEquals in x)
+equal badArgsList = throwError $ NumArgs 2 badArgsList

@@ -11,7 +11,7 @@ import Text.ParserCombinators.Parsec (parse)
 main :: IO ()
 main = do
     args <- getArgs
-    evaled <- return $ liftM show $ readExpr (head args) >>= eval
+    let evaled = liftM show $ readExpr (head args) >>= eval
     putStrLn $ extractValue $ trapError evaled
 
 readExpr :: String -> ThrowsError LispVal
