@@ -1,5 +1,3 @@
-{-# LANGUAGE ExistentialQuantification #-}
-
 module Evaluator where
 import Boolean
 import Control.Monad
@@ -8,6 +6,7 @@ import Error
 import LispValue
 import ListPrimitives
 import Numeric
+import Unpacker
 
 eval :: LispVal -> ThrowsError LispVal
 eval val@(String _) = return val
@@ -85,20 +84,6 @@ numBoolBinop = boolBinop unpackNum
 strBoolBinop = boolBinop unpackString
 boolBoolBinop = boolBinop unpackBool
 
-unpackNum :: LispVal -> ThrowsError Integer
-unpackNum (Number n) = return n
-unpackNum notNum = throwError $ TypeMismatch "number" notNum
-
-unpackString :: LispVal -> ThrowsError String
-unpackString (String str) = return str
-unpackString (Number n) = return $ show n
-unpackString (Bool b) = return $ show b
-unpackString notString = throwError $ TypeMismatch "not string" notString
-
-unpackBool :: LispVal -> ThrowsError Bool
-unpackBool (Bool b) = return b
-unpackBool notBool = throwError $ TypeMismatch "not boolean" notBool
-
 symbolToString :: [LispVal] -> ThrowsError LispVal
 symbolToString [Atom atom] = return $ String atom
 symbolToString _ = return $ String ""
@@ -106,20 +91,3 @@ symbolToString _ = return $ String ""
 stringToSymbol :: [LispVal] -> ThrowsError LispVal
 stringToSymbol [String str] = return $ Atom str
 stringToSymbol _ = return $ Atom ""
-
-data Unpacker = forall a. Eq a => AnyUnpacker(LispVal -> ThrowsError a)
-
-unpackEquals :: LispVal -> LispVal -> Unpacker -> ThrowsError Bool
-unpackEquals arg1 arg2 (AnyUnpacker unpacker) =
-          do unpacked1 <- unpacker arg1
-             unpacked2 <- unpacker arg2
-             return $ unpacked1 == unpacked2
-        `catchError` const (return False)
-
-equal :: [LispVal] -> ThrowsError LispVal
-equal [arg1, arg2] = do
-    primitiveEquals <- liftM or $ mapM (unpackEquals arg1 arg2)
-                                       [AnyUnpacker unpackNum, AnyUnpacker unpackString, AnyUnpacker unpackBool]
-    eqvEquals <- eqv [arg1, arg2]
-    return $ Bool (primitiveEquals || let (Bool x) = eqvEquals in x)
-equal badArgsList = throwError $ NumArgs 2 badArgsList
