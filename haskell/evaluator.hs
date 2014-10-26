@@ -23,6 +23,7 @@ eval (List [Atom "if", pred, conseq, alt]) = do
      Bool False -> eval alt
      Bool True -> eval conseq
      otherwise -> throwError  $ TypeMismatch "boolean" result
+eval (List (Atom "cond" : args)) = evalCond args
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval badForm = throwError $ BadSpecialForm "Unrecognized Special Form" [badForm]
 
@@ -91,3 +92,13 @@ symbolToString _ = return $ String ""
 stringToSymbol :: [LispVal] -> ThrowsError LispVal
 stringToSymbol [String str] = return $ Atom str
 stringToSymbol _ = return $ Atom ""
+
+evalCond :: [LispVal] -> ThrowsError LispVal
+evalCond (List [Atom "else", conseq] : _) = eval conseq
+evalCond (List [pred, conseq] : rest) = do
+    predResult <- eval pred
+    let (Bool truthy) = predResult in
+        if truthy
+        then eval conseq
+        else evalCond rest
+evalCond badArgs = throwError $ BadSpecialForm "improper cond" badArgs
