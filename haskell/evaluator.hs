@@ -24,6 +24,7 @@ eval (List [Atom "if", pred, conseq, alt]) = do
      Bool True -> eval conseq
      otherwise -> throwError  $ TypeMismatch "boolean" result
 eval (List (Atom "cond" : args)) = evalCond args
+eval (List (Atom "case" : exemplar : cases)) = evalCase exemplar cases
 eval (List (Atom func : args)) = mapM eval args >>= apply func
 eval badForm = throwError $ BadSpecialForm "Unrecognized Special Form" [badForm]
 
@@ -102,3 +103,12 @@ evalCond (List [pred, conseq] : rest) = do
         then eval conseq
         else evalCond rest
 evalCond badArgs = throwError $ BadSpecialForm "improper cond" badArgs
+
+evalCase :: LispVal -> [LispVal] -> ThrowsError LispVal
+evalCase _ (List [Atom "else", conseq] : _) = eval conseq
+evalCase exemplar (List [target, conseq] : rest) = do
+    predResult <- eqv [exemplar, target]
+    let (Bool truthy) = predResult in
+      if truthy
+      then eval conseq
+      else evalCase exemplar rest
