@@ -6,6 +6,7 @@ import Error
 import LispValue
 import ListPrimitives
 import Numeric
+import String
 import Unpacker
 
 eval :: LispVal -> ThrowsError LispVal
@@ -59,10 +60,21 @@ primitives = [("+", numericBinop (+)),
               ("&&", boolBoolBinop (&&)),
               ("||", boolBoolBinop (||)),
               ("string=?", strBoolBinop (==)),
+              ("string-ci=?", stringCI (==)),
               ("string<?", strBoolBinop (<)),
+              ("strig-ci<?", stringCI (<)),
               ("string>?", strBoolBinop (>)),
+              ("string-ci>?", stringCI (>)),
               ("string<=?", strBoolBinop (<=)),
+              ("string-ci<=?", stringCI (<=)),
               ("string>=?", strBoolBinop (>=)),
+              ("string-ci>=?", stringCI (>=)),
+              ("string-length", stringLength),
+              ("string-ref", stringRef),
+              ("substring", substring),
+              ("string-append", stringAppend),
+              ("string->list", stringToList),
+              ("list->string", listToString),
               ("car", car),
               ("cdr", cdr),
               ("cons", cons),

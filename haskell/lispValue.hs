@@ -20,6 +20,7 @@ unwordsList = unwords . map showVal
 
 showVal :: LispVal -> String
 showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Character char) = show char
 showVal (Atom name) = name
 showVal (Number contents) = show contents
 showVal (Float contents) = show contents
