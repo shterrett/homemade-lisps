@@ -3,31 +3,40 @@ import Boolean
 import Control.Monad
 import Control.Monad.Error
 import Error
+import Environment
 import LispValue
 import ListPrimitives
 import Numeric
 import String
 import Unpacker
 
-eval :: LispVal -> ThrowsError LispVal
-eval val@(String _) = return val
-eval val@(Character _) = return val
-eval val@(Bool _) = return val
-eval val@(Number _) = return val
-eval val@(Float _) = return val
-eval val@(Ratio _) = return val
-eval val@(Complex _) = return val
-eval (List [Atom "quote", val]) = return val
-eval (List [Atom "if", pred, conseq, alt]) = do
-   result <- eval pred
+eval :: Env -> LispVal -> IOThrowsError LispVal
+eval _ val@(String _) = return val
+eval _ val@(Character _) = return val
+eval _ val@(Bool _) = return val
+eval _ val@(Number _) = return val
+eval _ val@(Float _) = return val
+eval _ val@(Ratio _) = return val
+eval _ val@(Complex _) = return val
+eval env (Atom id) = getVar env id
+eval _ (List [Atom "quote", val]) = return val
+eval env (List [Atom "if", pred, conseq, alt]) = do
+   result <- eval env pred
    case result of
-     Bool False -> eval alt
-     Bool True -> eval conseq
+     Bool False -> eval env alt
+     Bool True -> eval env conseq
      otherwise -> throwError  $ TypeMismatch "boolean" result
-eval (List (Atom "cond" : args)) = evalCond args
-eval (List (Atom "case" : exemplar : cases)) = evalCase exemplar cases
-eval (List (Atom func : args)) = mapM eval args >>= apply func
-eval badForm = throwError $ BadSpecialForm "Unrecognized Special Form" [badForm]
+eval env (List (Atom "cond" : args)) = evalCond env args
+eval env (List (Atom "case" : exemplar : cases)) =
+    evalCase env exemplar cases
+eval env (List [Atom "set!", Atom var, form]) = eval env form >>=
+    setVar env var
+eval env (List [Atom "define", Atom var, form]) =
+    eval env form >>= defineVar env var
+eval env (List (Atom func : args)) =
+    mapM (eval env) args >>= liftThrows . apply func
+eval _ badForm =
+    throwError $ BadSpecialForm "Unrecognized Special Form" [badForm]
 
 apply :: String -> [LispVal] -> ThrowsError LispVal
 apply func args = maybe (throwError $ NotFunction "Unrecognized primitive function args" func)
@@ -106,21 +115,21 @@ stringToSymbol :: [LispVal] -> ThrowsError LispVal
 stringToSymbol [String str] = return $ Atom str
 stringToSymbol _ = return $ Atom ""
 
-evalCond :: [LispVal] -> ThrowsError LispVal
-evalCond (List [Atom "else", conseq] : _) = eval conseq
-evalCond (List [pred, conseq] : rest) = do
-    predResult <- eval pred
+evalCond :: Env -> [LispVal] -> IOThrowsError LispVal
+evalCond env (List [Atom "else", conseq] : _) = eval env conseq
+evalCond env (List [pred, conseq] : rest) = do
+    predResult <- eval env pred
     let (Bool truthy) = predResult in
         if truthy
-        then eval conseq
-        else evalCond rest
-evalCond badArgs = throwError $ BadSpecialForm "improper cond" badArgs
+        then eval env conseq
+        else evalCond env rest
+evalCond _ badArgs = throwError $ BadSpecialForm "improper cond" badArgs
 
-evalCase :: LispVal -> [LispVal] -> ThrowsError LispVal
-evalCase _ (List [Atom "else", conseq] : _) = eval conseq
-evalCase exemplar (List [target, conseq] : rest) = do
-    predResult <- eqv [exemplar, target]
+evalCase :: Env -> LispVal -> [LispVal] -> IOThrowsError LispVal
+evalCase env _ (List [Atom "else", conseq] : _) = eval env conseq
+evalCase env exemplar (List [target, conseq] : rest) = do
+    predResult <- liftThrows $ eqv [exemplar, target]
     let (Bool truthy) = predResult in
       if truthy
-      then eval conseq
-      else evalCase exemplar rest
+      then eval env conseq
+      else evalCase env exemplar rest
