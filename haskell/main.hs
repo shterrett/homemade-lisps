@@ -2,6 +2,7 @@ module Main where
 import Control.Monad
 import Control.Monad.Error
 import Error
+import Environment
 import Evaluator (eval)
 import LispValue
 import Parser
