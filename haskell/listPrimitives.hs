@@ -1,6 +1,5 @@
 module ListPrimitives where
 import Control.Monad.Error
-import Error
 import LispValue
 
 car :: [LispVal] -> ThrowsError LispVal

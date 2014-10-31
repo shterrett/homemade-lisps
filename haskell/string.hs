@@ -1,7 +1,6 @@
 module String where
 import Control.Monad.Error
 import Data.Char (toLower)
-import Error
 import LispValue
 
 stringLength :: [LispVal] -> ThrowsError LispVal

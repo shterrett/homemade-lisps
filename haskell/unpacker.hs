@@ -1,11 +1,6 @@
-{-# LANGUAGE ExistentialQuantification #-}
-
 module Unpacker where
 import Control.Monad.Error
-import Error
 import LispValue
-
-data Unpacker = forall a. Eq a => AnyUnpacker(LispVal -> ThrowsError a)
 
 unpackNum :: LispVal -> ThrowsError Integer
 unpackNum (Number n) = return n

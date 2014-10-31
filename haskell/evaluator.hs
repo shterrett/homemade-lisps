@@ -2,7 +2,6 @@ module Evaluator where
 import Boolean
 import Control.Monad
 import Control.Monad.Error
-import Error
 import Environment
 import LispValue
 import ListPrimitives

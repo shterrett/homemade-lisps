@@ -1,6 +1,5 @@
 module Boolean where
 import Control.Monad.Error
-import Error
 import LispValue
 import Unpacker
 

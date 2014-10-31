@@ -3,15 +3,10 @@ import Control.Monad
 import Control.Monad.Error
 import Data.IORef
 import Data.Maybe (isJust)
-import Error
 import LispValue
-
-type Env = IORef[(String, IORef LispVal)]
 
 nullEnv :: IO Env
 nullEnv = newIORef []
-
-type IOThrowsError = ErrorT LispError IO
 
 liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err) = throwError err
