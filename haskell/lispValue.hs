@@ -20,7 +20,7 @@ data LispVal = Atom String
              | String String
              | Character Char
              | Vector (Vector LispVal)
-             | PrimitiveFun ([LispVal] -> ThrowsError LispVal)
+             | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
              | Func { params :: [String],
                       varargs :: Maybe String,
                       body :: [LispVal],
@@ -59,10 +59,15 @@ showVal (Bool False) = "#f"
 showVal (List contents) = "(" ++ unwordsList contents ++ ")"
 showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ showVal tail  ++ ")"
 showVal (Vector contents) = "#(" ++ unwordsList (toList contents) ++ ")"
+showVal (PrimitiveFunc _) = "<primitive>"
+showVal (Func { params = args, varargs = varargs, body = body, closure = env }) =
+    "(lambda (" ++ unwords (map show args) ++
+      (case varargs of
+        Nothing -> ""
+        Just x -> "." ++ x) ++ ") ...)"
 
 instance Show LispVal where
     show = showVal
-
 
 showError :: LispError -> String
 showError (UnboundVar message varname) = message ++ ": " ++ varname

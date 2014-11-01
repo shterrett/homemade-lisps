@@ -2,7 +2,7 @@ module Main where
 import Control.Monad
 import Control.Monad.Error
 import Environment
-import Evaluator (eval)
+import Evaluator (eval, primitiveBindings)
 import LispValue
 import Parser
 import System.IO
@@ -40,7 +40,7 @@ until_ pred prompt action = do
     unless (pred result) $ action result >> until_ pred prompt action
 
 runRepl :: IO ()
-runRepl = nullEnv >>= until_ (== "(exit)") (readPrompt "Lisp >>> ") . evalAndPrint
+runRepl = primitiveBindings >>= until_ (== "(exit)") (readPrompt "Lisp >>> ") . evalAndPrint
 
 runOne :: String -> IO ()
-runOne str = nullEnv >>= flip evalAndPrint str
+runOne str = primitiveBindings >>= flip evalAndPrint str
