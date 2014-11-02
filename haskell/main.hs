@@ -3,24 +3,16 @@ import Control.Monad
 import Control.Monad.Error
 import Environment
 import Evaluator (eval, primitiveBindings)
+import LispIO
 import LispValue
 import Parser
-import System.IO
 import System.Environment
-import Text.ParserCombinators.Parsec (parse)
+import System.IO
 
 main :: IO ()
 main = do
     args <- getArgs
-    case length args of
-      1 -> runOne $ head args
-      0 -> runRepl
-      otherwise -> putStrLn "0 or 1 arguments required"
-
-readExpr :: String -> ThrowsError LispVal
-readExpr input = case parse parseExpr "lisp" input of
-                   Left err -> throwError $ Parser err
-                   Right val -> return val
+    if null args then runRepl else runOne args
 
 flushStr :: String -> IO ()
 flushStr str = putStr str >> hFlush stdout
@@ -42,5 +34,10 @@ until_ pred prompt action = do
 runRepl :: IO ()
 runRepl = primitiveBindings >>= until_ (== "(exit)") (readPrompt "Lisp >>> ") . evalAndPrint
 
-runOne :: String -> IO ()
-runOne str = primitiveBindings >>= flip evalAndPrint str
+runOne :: [String] -> IO ()
+runOne args = do
+    env <- primitiveBindings >>= flip bindVars [("args", List $ map String $ drop 1 args)]
+    runIOThrows
+      (liftM show $
+        eval env (List [Atom "load", String (head args)]))
+        >>= hPutStrLn stderr

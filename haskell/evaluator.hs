@@ -4,10 +4,12 @@ import Control.Monad
 import Control.Monad.Error
 import Data.Maybe (isNothing)
 import Environment
+import LispIO
 import LispValue
 import ListPrimitives
 import Numeric
 import String
+import System.IO
 import Unpacker
 
 eval :: Env -> LispVal -> IOThrowsError LispVal
@@ -43,6 +45,8 @@ eval env (List (Atom "lambda" : DottedList params varargs : body)) =
     makeVarArgs varargs env params body
 eval env (List (Atom "lambda" : varargs@(Atom _) : body)) =
     makeVarArgs varargs env [] body
+eval env (List [Atom "load", String filename]) =
+    load filename >>= liftM last . mapM (eval env)
 eval env (List (function : args)) = do
     func <- eval env function
     argVals <- mapM (eval env) args
@@ -68,6 +72,11 @@ apply (Func params varargs body closure) args =
             case arg of
               Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
               Nothing -> return env
+apply (IOFunc func) args = func args
+
+applyProc :: [LispVal] -> IOThrowsError LispVal
+applyProc [func, List args] = apply func args
+applyProc (func : args) = apply func args
 
 primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
 primitives = [("+", numericBinop (+)),
@@ -117,9 +126,23 @@ primitives = [("+", numericBinop (+)),
               ("eqv?", eqv),
               ("equal?", equal)]
 
+ioPrimitives :: [(String, [LispVal] -> IOThrowsError LispVal)]
+ioPrimitives = [("apply", applyProc),
+                ("open-input-file", makePort ReadMode),
+                ("open-output-file", makePort WriteMode),
+                ("close-input-port", closePort),
+                ("close-output-port", closePort),
+                ("read", readProc),
+                ("write", writeProc),
+                ("read-contents", readContents),
+                ("read-all", readAll)]
+
 primitiveBindings :: IO Env
-primitiveBindings = nullEnv >>= flip bindVars (map makePrimitiveFunc primitives)
-  where makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
+primitiveBindings =
+  nullEnv >>=
+    flip bindVars (map (makeFunc PrimitiveFunc)  primitives
+                   ++ map (makeFunc IOFunc) ioPrimitives)
+  where makeFunc constructor (var, func) = (var, constructor func)
 
 numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> ThrowsError LispVal
 numericBinop _ [] = throwError $ NumArgs 2 []

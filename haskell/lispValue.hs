@@ -6,6 +6,7 @@ import Data.Complex
 import Data.IORef
 import Data.Ratio
 import Data.Vector (Vector, fromList, toList)
+import System.IO
 import Text.ParserCombinators.Parsec hiding (spaces)
 
 
@@ -26,6 +27,8 @@ data LispVal = Atom String
                       body :: [LispVal],
                       closure :: Env
                     }
+             | IOFunc ([LispVal] -> IOThrowsError LispVal)
+             | Port Handle
 
 type Env = IORef[(String, IORef LispVal)]
 
@@ -65,6 +68,8 @@ showVal (Func { params = args, varargs = varargs, body = body, closure = env }) 
       (case varargs of
         Nothing -> ""
         Just x -> "." ++ x) ++ ") ...)"
+showVal (IOFunc _) = "<IO Primitive>"
+showVal (Port _) = "<IO Port>"
 
 instance Show LispVal where
     show = showVal
