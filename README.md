@@ -7,3 +7,8 @@ constructed by following various tutorials.
 
 [Write Yourself a Scheme in 48
 Hours](http://en.wikibooks.org/wiki/Write_Yourself_a_Scheme_in_48_Hours)
+
+## Python
+
+[(How to Write a (Lisp) Interpreter (in Python))](http://norvig.com/lispy.html)
+[(An ((Even Better) Lisp) Interpreter (in Python))](http://norvig.com/lispy2.html)
