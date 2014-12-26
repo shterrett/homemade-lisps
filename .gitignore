@@ -10,3 +10,6 @@ cabal-dev
 cabal.sandbox.config
 cabal.config
 haskell/lisp
+
+*.pyc
+python/__pychache__/
