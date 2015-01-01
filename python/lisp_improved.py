@@ -1,3 +1,5 @@
+import sys
+
 class Symbol(str): pass
 
 def Sym(s, symbol_table={}):
@@ -58,3 +60,38 @@ def read(inport):
   return eof_object if token1 == eof_object else read_ahead(token1)
 
 quotes = {"'":_quote, "`":_quasiquote, ",":_unquote, ",@":_unquotesplicing}
+
+def atom(token):
+  if token == "#t": return True
+  elif token == "#f": return False
+  elif token == '"': return token[1:-1].decode('string_escape')
+  try: return int(token)
+  except ValueError:
+    try: return float(token)
+    except ValueError:
+      return Sym(token)
+
+def to_string(x):
+  if x is True: return "#t"
+  elif x is False: return "#f"
+  elif isa(x, Symbol): return x
+  elif isa(x, str): return '"%s"' % x.encode('string_escape').replace('"', r'\"')
+  elif isa(x, list): return '(' + ' '.join(map(to_string, x)) + ')'
+  elif isa(x, complex): return str(x).replace('j', 'i')
+  else: return str(x)
+
+def load(filename):
+  repl(None, InPort(open(filename)), None)
+
+def repl(prompt='> ', inport=InPort(sys.stdin), out=sys.stdout):
+  out.write("Lispy version 2.0\n")
+  while True:
+    try:
+      if prompt:
+        out.write(prompt)
+      x = parse(inport)
+      if x is eof_object: return
+      val = eval(x)
+      if val is not None and out: print >> out, to_string(val)
+    except Exception as e:
+      print("{0}: {1}".format(type(e).__name__, e))
