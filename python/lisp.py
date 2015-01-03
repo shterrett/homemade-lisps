@@ -100,7 +100,8 @@ def eval(x, env=global_env):
   elif not isinstance(x, List):
     return x
   elif x[0] == 'quote':
-    return x[1:]
+    (_, exp) = x
+    return exp
   elif x[0] == 'if':
     (_, test, conseq, alt) = x
     exp = conseq if eval(test, env) else alt
@@ -109,7 +110,7 @@ def eval(x, env=global_env):
     (_, var, exp) = x
     val = eval(exp, env)
     env[var] = val
-    return val
+    return None
   elif x[0] == 'set!':
     (_, var, exp) = x
     evaled = eval(exp, env)
@@ -128,10 +129,10 @@ def repl(prompt="> "):
     input = code.InteractiveConsole.raw_input(prompt)
     val = eval(parse(input))
     if val is not None:
-      print(schemestring(val))
+      print(to_string(val))
 
-def schemestring(exp):
+def to_string(exp):
   if isinstance(exp, List):
-    return '(' + join(map(schemestr, exp)) + ')'
+    return '(' + " ".join(map(to_string, exp)) + ')'
   else:
     return str(exp)

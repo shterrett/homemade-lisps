@@ -38,11 +38,11 @@ lis_tests = [
     ]
 
 lispy_tests = [
-    ("()", SyntaxError), ("(set! x)", SyntaxError), 
+    ("()", SyntaxError), ("(set! x)", SyntaxError),
     ("(define 3 4)", SyntaxError),
-    ("(quote 1 2)", SyntaxError), ("(if 1 2 3 4)", SyntaxError), 
+    ("(quote 1 2)", SyntaxError), ("(if 1 2 3 4)", SyntaxError),
     ("(lambda 3 3)", SyntaxError), ("(lambda (x))", SyntaxError),
-    ("""(if (= 1 2) (define-macro a 'a) 
+    ("""(if (= 1 2) (define-macro a 'a)
      (define-macro a 'b))""", SyntaxError),
     ("(define (twice x) (* 2 x))", None), ("(twice 2)", 4),
     ("(twice 2 2)", TypeError),
@@ -69,11 +69,11 @@ lispy_tests = [
     ("(sum-squares-range 1 3000)", 9004500500), ## Tests tail recursion
     ("(call/cc (lambda (throw) (+ 5 (* 10 (throw 1))))) ;; throw", 1),
     ("(call/cc (lambda (throw) (+ 5 (* 10 1)))) ;; do not throw", 15),
-    ("""(call/cc (lambda (throw) 
+    ("""(call/cc (lambda (throw)
          (+ 5 (* 10 (call/cc (lambda (escape) (* 100 (escape 3)))))))) ; 1 level""", 35),
-    ("""(call/cc (lambda (throw) 
+    ("""(call/cc (lambda (throw)
          (+ 5 (* 10 (call/cc (lambda (escape) (* 100 (throw 3)))))))) ; 2 levels""", 3),
-    ("""(call/cc (lambda (throw) 
+    ("""(call/cc (lambda (throw)
          (+ 5 (* 10 (call/cc (lambda (escape) (* 100 1))))))) ; 0 levels""", 1005),
     ("(* 1i 1i)", -1), ("(sqrt -1)", 1j),
     ("(let ((a 1) (b 2)) (+ a b))", 3),
@@ -83,8 +83,8 @@ lispy_tests = [
     ("(define-macro unless (lambda args `(if (not ,(car args)) (begin ,@(cdr args))))) ; test `", None),
     ("(unless (= 2 (+ 1 1)) (display 2) 3 4)", None),
     (r'(unless (= 4 (+ 1 1)) (display 2) (display "\n") 3 4)', 4),
-    ("(quote x)", 'x'), 
-    ("(quote (1 2 three))", [1, 2, 'three']), 
+    ("(quote x)", 'x'),
+    ("(quote (1 2 three))", [1, 2, 'three']),
     ("'x", 'x'),
     ("'(one 2 3)", ['one', 2, 3]),
     ("(define L (list 1 2 3))", None),
@@ -103,19 +103,20 @@ def test(tests, name=''):
     for (x, expected) in tests:
         try:
             result = eval(parse(x))
-            print x, '=>', to_string(result)
+            result_string = x + '=>' + to_string(result)
             ok = (result == expected)
         except Exception as e:
-            print x, '=raises=>', type(e).__name__, e
+            result_string = x + '=raises=>' + type(e).__name__
             ok = issubclass(expected, Exception) and isinstance(e, expected)
         if not ok:
             fails += 1
-            print 'FAIL!!!  Expected', expected
-    print '%s %s: %d out of %d tests fail.' % ('*'*45, name, fails, len(tests))
+            print("\n")
+            print(result_string)
+            print('FAIL!!!  Expected', expected)
+    print('%s %s: %d out of %d tests fail.' % ('*'*45, name, fails, len(tests)))
 
 if __name__ == '__main__':
-    from lis import *
-    test(lis_tests, 'lis.py')
-    from lispy import *
-    test(lis_tests+lispy_tests, 'lispy.py')
-
+    from lisp import *
+    test(lis_tests, 'lisp.py')
+    from lisp_improved import *
+    test(lis_tests+lispy_tests, 'lisp_improved.py')
